@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>TripVibe - AI Travel Planner</title>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/history@5/umd/history.development.js"></script>
+    <script src="https://unpkg.com/react-router@6.3.0/umd/react-router.development.js"></script>
+    <script src="https://unpkg.com/react-router-dom@6.3.0/umd/react-router-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f86d16", // Primary color now orange
+                        "primary-accent": "#13ecda", // Swapped teal to accent
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#23170f",
+                        "card-light": "#ffffff",
+                        "card-dark": "#2d201a",
+                        "teal-accent": "#0d9488",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem", 
+                        "lg": "2rem", 
+                        "xl": "3rem", 
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .dark .glass-panel {
+            background: rgba(16, 34, 34, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes fade-in-down {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down { animation: fade-in-down 0.5s ease-out forwards; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-gray-100 antialiased overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
+        const { MemoryRouter, Routes, Route, Link, useNavigate, useLocation } = ReactRouterDOM;
+
+        // --- Mock Data ---
+        const DAYS = [
+            { id: 1, title: "Relaxation & Culture", icon: "wb_twilight", items: [
+                { time: "09:00 AM", title: "Floating Breakfast", category: "Food", price: 30, icon: "bakery_dining", desc: "Start the day with a luxurious breakfast served on a floating tray in your private pool." },
+                { time: "11:00 AM", title: "Monkey Forest", category: "Adventure", price: 15, icon: "forest", desc: "Explore the sacred sanctuary and meet the playful long-tailed macaques." },
+                { time: "01:00 PM", title: "Lunch at Bebek Bengil", category: "Food", price: 25, icon: "restaurant", desc: "Enjoy the famous crispy duck in a serene setting surrounded by rice paddies." },
+                { time: "04:00 PM", title: "Sunset at Uluwatu", category: "Sightseeing", price: 10, icon: "wb_twilight", desc: "Watch the breathtaking sunset from the cliff-top temple." }
+            ], budget: 40 },
+            { id: 2, title: "Beach Vibes", icon: "surfing", items: [
+                { time: "08:30 AM", title: "Surf Lessons at Kuta", category: "Adventure", price: 40, icon: "surfing", desc: "Master the waves with expert instructors on the world-famous Kuta beach break." },
+                { time: "12:30 PM", title: "Seafood Lunch", category: "Food", price: 35, icon: "restaurant", desc: "Freshly caught snapper and prawns grilled to perfection, served right on the sand." },
+                { time: "03:00 PM", title: "Balinese Spa Treatment", category: "Wellness", price: 50, icon: "spa", desc: "Relax and rejuvenate with a traditional full-body massage and floral bath." },
+                { time: "07:00 PM", title: "Beachfront Fire Dance", category: "Culture", price: 20, icon: "whatshot", desc: "Witness the mesmerizing Kecak fire dance performance as the sun sets." }
+            ], budget: 40 },
+            { id: 3, title: "Jungle Exploration", icon: "landscape", items: [
+                { time: "09:00 AM", title: "Tegallalang Rice Terrace Trek", category: "Nature", price: 10, icon: "landscape", desc: "Wander through the iconic emerald-green rice paddies and capture stunning photos." },
+                { time: "11:30 AM", title: "Bali Swing Experience", category: "Adventure", price: 25, icon: "attractions", desc: "Soar high above the jungle canopy and river for an adrenaline rush." },
+                { time: "02:00 PM", title: "Coffee Plantation Tasting", category: "Food", price: 15, icon: "coffee", desc: "Sample Luwak coffee and herbal teas while overlooking the lush valley." },
+                { time: "05:00 PM", title: "Ubud Art Market Shopping", category: "Shopping", price: 0, icon: "shopping_bag", desc: "Browse handmade crafts, silk scarves, and souvenirs in the bustling market." }
+            ], budget: 40 },
+            { id: 4, title: "Volcano & Lakes", icon: "hiking", items: [
+                { time: "03:00 AM", title: "Mount Batur Sunrise Hike", category: "Adventure", price: 60, icon: "hiking", desc: "Trek up an active volcano under the stars to witness a spectacular sunrise over the caldera." },
+                { time: "09:00 AM", title: "Hot Springs Relaxation", category: "Wellness", price: 20, icon: "hot_tub", desc: "Soothe your muscles in natural thermal pools with views of the lake and mountains." },
+                { time: "01:00 PM", title: "Local Village Lunch", category: "Food", price: 15, icon: "rice_bowl", desc: "Authentic Balinese meal prepared by locals in a traditional Kintamani village." },
+                { time: "04:00 PM", title: "Tirta Empul Holy Water Temple", category: "Culture", price: 10, icon: "temple_hindu", desc: "Participate in a traditional purification ritual at this sacred water temple." }
+            ], budget: 70 },
+            { id: 5, title: "Nusa Penida Escape", icon: "directions_boat", items: [
+                { time: "10:00 AM", title: "Nusa Penida Boat Trip", category: "Adventure", price: 80, icon: "directions_boat", desc: "High-speed boat transfer to the spectacular Nusa Penida island for a day of exploration." },
+                { time: "01:00 PM", title: "Kelingking Beach Photo Op", category: "Sightseeing", price: 5, icon: "photo_camera", desc: "Capture the iconic T-Rex shaped coastal cliff view, one of the most famous spots in Bali." },
+                { time: "04:00 PM", title: "Snorkeling at Crystal Bay", category: "Adventure", price: 30, icon: "scuba_diving", desc: "Swim in crystal clear waters teeming with colorful coral reefs and exotic marine life." },
+                { time: "08:00 PM", title: "Farewell Dinner at Jimbaran", category: "Food", price: 50, icon: "restaurant_menu", desc: "Enjoy a delicious fresh seafood dinner on the beach under the stars to end your trip." }
+            ], budget: 75 }
+        ];
+
+        // --- Components ---
+
+        const BottomNav = () => {
+            const navigate = useNavigate();
+            const location = useLocation();
+            const isActive = (path) => location.pathname === path;
+
+            return (
+                <nav className="fixed bottom-0 z-[60] w-full border-t border-gray-100 dark:border-white/5 bg-white/90 dark:bg-card-dark/90 px-6 pb-6 pt-3 backdrop-blur-lg max-w-md left-1/2 -translate-x-1/2 rounded-t-3xl">
+                    <div className="flex items-end justify-between gap-2">
+                        <button onClick={() => navigate('/dashboard')} className={`flex flex-1 flex-col items-center justify-end gap-1 rounded-full ${isActive('/dashboard') ? 'text-primary' : 'text-gray-400 dark:text-gray-500'}`}>
+                            <div className="flex h-8 items-center justify-center">
+                                <span className={`material-symbols-outlined text-[28px] ${isActive('/dashboard') ? 'fill-current' : ''}`}>home</span>
+                            </div>
+                            <p className="text-[10px] font-bold leading-normal tracking-wide">Home</p>
+                        </button>
+                        <button onClick={() => navigate('/itinerary/1')} className={`flex flex-1 flex-col items-center justify-end gap-1 ${isActive('/itinerary/1') ? 'text-primary' : 'text-gray-400 dark:text-gray-500'}`}>
+                            <div className="flex h-8 items-center justify-center">
+                                <span className="material-symbols-outlined text-[28px]">explore</span>
+                            </div>
+                            <p className="text-[10px] font-medium leading-normal tracking-wide">Explore</p>
+                        </button>
+                        <button className="flex flex-1 flex-col items-center justify-end gap-1 text-gray-400 dark:text-gray-500">
+                            <div className="flex h-8 items-center justify-center">
+                                <span className="material-symbols-outlined text-[28px]">favorite</span>
+                            </div>
+                            <p className="text-[10px] font-medium leading-normal tracking-wide">Saved</p>
+                        </button>
+                        <button className="flex flex-1 flex-col items-center justify-end gap-1 text-gray-400 dark:text-gray-500">
+                            <div className="flex h-8 items-center justify-center">
+                                <span className="material-symbols-outlined text-[28px]">person</span>
+                            </div>
+                            <p className="text-[10px] font-medium leading-normal tracking-wide">Profile</p>
+                        </button>
+                    </div>
+                </nav>
+            );
+        };
+
+        const FloatingAIButton = () => (
+            <button className="fixed bottom-24 right-6 h-16 w-16 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 shadow-xl shadow-purple-500/40 text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50">
+                <span className="material-symbols-outlined text-[32px] animate-pulse">auto_awesome</span>
+            </button>
+        );
+
+        // --- Pages ---
+
+        const WelcomePage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="relative flex min-h-screen w-full flex-col overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-200 via-sky-400 to-blue-600 dark:from-cyan-900 dark:via-blue-900 dark:to-[#0f172a] z-0"></div>
+                    <div className="relative z-10 flex flex-col items-center justify-center min-h-screen w-full max-w-md mx-auto px-6 py-8">
+                        <div className="mb-8 flex flex-col items-center gap-2 animate-fade-in-down">
+                            <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl shadow-lg border border-white/10">
+                                <span className="material-symbols-outlined text-white text-[32px]">travel_explore</span>
+                            </div>
+                            <span className="text-white font-bold text-xl tracking-tight drop-shadow-sm">TripVibe</span>
+                        </div>
+                        <div className="w-full bg-white dark:bg-[#1E1E1E] rounded-[2rem] p-5 shadow-2xl shadow-blue-900/20 dark:shadow-black/50 ring-1 ring-white/20 backdrop-blur-sm flex flex-col gap-5">
+                            <div className="w-full aspect-[4/3] bg-center bg-no-repeat bg-cover rounded-[1.5rem] relative overflow-hidden shadow-inner" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuB1PURd5VngJDheR2wUMBUa81TV34ynq5-4pQW5_Jk8Dqb03J32ad4NgSi42SsrJfiboH30OK7ezaBmW9FlPdPEWp5a9IndiysIDGGadBF48ZEG_XpiVMmzi0hcnzx3GIAIGnxUJuRSSDV3TrEbxgIHzPSFrUXb_Kd8HEbEWx31FfnrikteP5wf_vMg3f0BlvSMNjpJ_WmZtn6B-zGBNp3CG8qWWzJSaKD7I4LI9_gsAH_OvnRWD7e1DPxMnF1NYzprqf1Djm-7Euk')"}}>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
+                            </div>
+                            <div className="flex flex-col gap-2 px-1">
+                                <h1 className="text-[#181311] dark:text-white tracking-tight text-[32px] font-extrabold leading-[1.15] text-center">
+                                    Plan Your Next <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">Escape</span> 🌴
+                                </h1>
+                                <p className="text-neutral-500 dark:text-neutral-400 text-base font-medium leading-relaxed text-center px-2">
+                                    The AI-powered travel planner that builds your perfect itinerary in seconds.
+                                </p>
+                            </div>
+                            <div className="pt-2 pb-1">
+                                <button onClick={() => navigate('/dashboard')} className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-full h-14 px-6 bg-primary hover:opacity-90 active:scale-[0.98] transition-all duration-200 text-white gap-3 shadow-lg shadow-primary/30">
+                                    <span className="text-lg font-bold leading-normal tracking-wide">Start Planning Now</span>
+                                    <span className="material-symbols-outlined text-[24px]">arrow_forward</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="mt-8">
+                            <p className="text-white/90 dark:text-white/70 text-sm font-medium leading-normal text-center drop-shadow-sm">
+                                Already have an account? <a className="underline decoration-white/50 underline-offset-4 hover:text-white hover:decoration-white transition-colors" href="#">Log in</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DashboardPage = () => {
+            const navigate = useNavigate();
+            return (
+                <div className="relative flex h-full min-h-screen w-full flex-col overflow-x-hidden pb-32">
+                    <header className="sticky top-0 z-30 flex items-center justify-between bg-background-light/80 dark:bg-background-dark/80 px-4 py-3 backdrop-blur-md transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/20 shadow-sm">
+                                <img alt="Profile" className="h-full w-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAerRN-IrMyIcvzVjmfY8LcSDnhpct8zwjZ2Aie4pdIcWEhZT0cC7-DZtelNIw91MO-7upCI7rtstXGgOPYNrdTJilksebYCpEgEkBCEzJeEy_RTTiZHKquh268NRM2PBciWS5o3PW4qEAEYpZNm-LyrQNgwsITIZEbeHTk0trl2dieB8qG0lsEYiEK5hubX9QR7K0e-UzXwbRc-Q5VeiCYOtH28JFOeuHjNDhWmNEbEjmE5oknLj8mloiY8i8Arij2DLbT_cnDhQ"/>
+                            </div>
+                            <h2 className="text-xl font-bold tracking-tight text-[#181311] dark:text-white">TripVibe</h2>
+                        </div>
+                        <button className="flex h-10 w-10 items-center justify-center rounded-full text-[#181311] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-symbols-outlined text-[24px]">notifications</span>
+                        </button>
+                    </header>
+                    <main className="flex flex-col px-4 pt-2 max-w-md mx-auto w-full">
+                        <div className="mb-6 mt-2">
+                            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-[#181311] dark:text-white">
+                                Ready for your <br/><span className="text-primary">next escape?</span>
+                            </h1>
+                        </div>
+                        <div className="mb-8 flex items-center gap-3 rounded-lg bg-white dark:bg-card-dark p-2 pr-4 shadow-sm border border-transparent dark:border-white/5 cursor-pointer">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <span className="material-symbols-outlined text-[20px]">magic_button</span>
+                            </div>
+                            <p className="flex-1 truncate text-sm font-medium text-gray-400">Where do you want to go next?</p>
+                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-[#181311] dark:text-white">My Trips</h2>
+                            <button className="text-sm font-semibold text-primary hover:opacity-80">View all</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-5 pb-6">
+                            <div onClick={() => navigate('/itinerary/1')} className="group relative flex flex-col gap-0 rounded-lg bg-white dark:bg-card-dark shadow-soft transition-transform duration-300 hover:-translate-y-1 overflow-hidden cursor-pointer">
+                                <div className="relative aspect-[16/10] w-full overflow-hidden">
+                                    <img alt="Bali" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDg7uexfNK-Yrca8stPqzXf_eY6z3q6wmjGdjG4dQbqcXFbKo9qIPvgU5GK6fd2OpdQnN2QUkBLVdRUNXqY7VpMgviiwrMNXi_DAAJoU_7lqOTDnJnTccIwYES-gw0q2RLuw2o1CN4aV7PfSVw3LkVYzIOee_DbOwJEIv0cRP-Dmn1M_T2pwMI5yzJPXejyZct8Y5KezGm8hk8V8zGYzZVJUTx8nj2r5UBDX_vFjaYvDMRUqwfDWnV-vNBYv_IzrPZSPY3BIUYHSSE"/>
+                                    <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-black/60 px-3 py-1.5 backdrop-blur-sm">
+                                        <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                        <span className="text-xs font-bold uppercase tracking-wide text-[#181311] dark:text-white">Upcoming</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col p-5">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-[#181311] dark:text-white group-hover:text-primary transition-colors">Bali Adventure</h3>
+                                            <div className="mt-1 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                                                <span>Aug 12 - Aug 20</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">5 Days</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-white/5">
+                                        <div className="flex -space-x-2">
+                                            <div className="h-6 w-6 rounded-full border-2 border-white dark:border-card-dark bg-gray-200 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDV-IZEiPrLjq5VVnuVWMd5MZT0-HUr3aJdu5VNi3z8kljBehYMj3n2Im-kYO5xrNX3qPWUAIAneL39Iic73yGozK5809RtzFRy2ucPfQGfSok8INAq71XCKu9F1MPXUmvGj0Wm3ub_QExnUtrFWNA3w7KNuWdiQW15Ut22xl4P9PNdTa3IDE4tS6A0DP0p_6OhJRYNbGDGeMW5wbJrSrh_IqqGR-OUmRZvRZuE1K2KU2484bIAQbY_UUiZDECPpXtnbosWKm1fq4k')"}}></div>
+                                            <div className="h-6 w-6 rounded-full border-2 border-white dark:border-card-dark bg-gray-200 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuD9AgjH1riB6SyBqc61FDftQP5GeawscUdNQgOsZAboOZ4Y2jq2CzdhUZr3cs5jhyOctB_L5BGdKtHFpF_wO_S2jwdW5gufFgoagOBxjFYVHJgA59uwsV61OErcnYkFwBdXn27s6lSvYl9UgeN-hERc29lI4-wnuIcn55RYaVTs0b2EE7a1XXuTFhHhGOiI62uTsU1AF44YImbJ5gzBCpZ0glCbmg9R8_Rn8-cAXdQAhndUySUIfQecIOS0CG25_Xfrd9G9eQL6W80')"}}></div>
+                                        </div>
+                                        <span className="text-xs font-medium text-gray-400">+2 friends</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="group relative flex flex-col gap-0 rounded-lg bg-white dark:bg-card-dark shadow-soft transition-transform duration-300 hover:-translate-y-1 overflow-hidden opacity-75">
+                                <div className="relative aspect-[16/10] w-full overflow-hidden">
+                                    <img alt="Tokyo" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzAJhazp_xFeajYxPVTGFb-ErNvYNl3Z7Vhu84WlHqdl_dfF9udqKwfkAgXfpxGm6UaeubAur4sIPdDoLWyPpGMyxh0VaVIkUNzcF4axpL6SeN7U2FmVnez8eKeROEmCXhzUJp6Qldwq2LJwvY7RyNkHJzr6akB8PrFUCpefk79S4atBFGS5ReOXTgwo-N0ITeBL38b9AWUQyWCMK2dl97P4zRu2L5RXMqWUSIoGO0MxAKdzR0yL6djoDdrLLWDqP3p6kxJEkXuG0"/>
+                                    <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-black/60 px-3 py-1.5 backdrop-blur-sm">
+                                        <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                                        <span className="text-xs font-bold uppercase tracking-wide text-[#181311] dark:text-white">Upcoming</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col p-5">
+                                    <h3 className="text-xl font-bold text-[#181311] dark:text-white">Tokyo Tech Tour</h3>
+                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Oct 05 - Oct 10 • 5 Days</p>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const ItineraryDetailPage = () => {
+            const { dayId } = ReactRouterDOM.useParams();
+            const navigate = useNavigate();
+            const currentDayId = parseInt(dayId || "1");
+            const currentDay = DAYS.find(d => d.id === currentDayId) || DAYS[0];
+
+            return (
+                <div className="relative flex min-h-screen w-full flex-col group/design-root max-w-md mx-auto bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden sm:rounded-[3rem] sm:my-8 sm:border-8 sm:border-gray-900 pb-32">
+                    <div className="relative w-full h-80 shrink-0">
+                        <div className="absolute inset-0 bg-cover bg-center" style={{backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCEky4BuC646C_Y3p5JUvZrHQwnbzAZebjxvJZ5sW4Fat5ccGS7aBRx1PFb2H9QZvehoLoVDPl5HCYL2vyLQB5Bj3U6LsOJWJ3kFGJpocy0pVPWKxR-3zCmgkAYvPzQ2FKqL7uM0mu1YUwNpMwlPc_n64YmjEiC1szMyuCqB_A7Kd1sdpDMaPt8h-om09KaR5dglAWAFKWYzgD6CTRCCp4a3ABaVLRJRHmrQ1AUvLEgwZh0A1IK4Fd9CxefM9HhinGosZGZgdMZVSc')"}}>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30"></div>
+                        </div>
+                        <div className="absolute top-0 left-0 w-full p-4 pt-12 flex justify-between items-center z-20">
+                            <button onClick={() => navigate('/dashboard')} className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition">
+                                <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+                            </button>
+                            <div className="flex gap-3">
+                                <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition">
+                                    <span className="material-symbols-outlined text-[24px]">ios_share</span>
+                                </button>
+                                <button className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition">
+                                    <span className="material-symbols-outlined text-[24px]">more_horiz</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div className="absolute bottom-0 left-0 w-full p-6 pb-8 z-20">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-white/90 text-sm font-medium tracking-wide uppercase">TripVibe Itinerary</span>
+                                <h1 className="text-white text-3xl font-bold tracking-tight shadow-sm">Bali Adventure</h1>
+                                <div className="flex items-center gap-2 text-white/90 text-sm font-medium mt-1">
+                                    <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                                    <span>5 Days</span>
+                                    <span className="mx-1">•</span>
+                                    <span className="material-symbols-outlined text-[18px]">group</span>
+                                    <span>2 Travelers</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="relative flex flex-col flex-1 -mt-6 bg-background-light dark:bg-background-dark rounded-t-3xl z-30 px-5 pt-8">
+                        <div className="bg-white dark:bg-[#2f221a] rounded-2xl p-5 shadow-sm mb-8 border border-gray-100 dark:border-none">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-green-100 dark:bg-green-900/30 p-1.5 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+                                        <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                                    </div>
+                                    <h3 className="text-base font-bold text-gray-900 dark:text-white">Budget Tracker</h3>
+                                </div>
+                                <span className="text-xs font-semibold px-2 py-1 rounded bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">On Track</span>
+                            </div>
+                            <div className="relative h-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+                                <div className="absolute top-0 left-0 h-full bg-primary rounded-full" style={{width: `${currentDay.budget}%`}}></div>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">Spent: <span className="text-gray-900 dark:text-white font-bold">${1200 + (currentDayId * 150)}</span></span>
+                                <span className="text-gray-400 dark:text-gray-500 font-medium">/ $3,000</span>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 overflow-x-auto no-scrollbar mb-8 pb-1 snap-x">
+                            {DAYS.map(day => (
+                                <button
+                                    key={day.id}
+                                    onClick={() => navigate(`/itinerary/${day.id}`)}
+                                    className={`snap-start shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full transition-all active:scale-95 ${
+                                        day.id === currentDayId 
+                                        ? 'bg-primary shadow-md shadow-primary/20 text-white' 
+                                        : 'bg-white dark:bg-[#2f221a] border border-gray-200 dark:border-transparent text-gray-600 dark:text-gray-300 font-medium'
+                                    }`}
+                                >
+                                    {day.id === currentDayId && <span className="material-symbols-outlined text-[20px] fill-1">calendar_today</span>}
+                                    <span className="text-sm font-bold">Day {day.id}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-col relative">
+                            <div className="absolute left-[27px] top-4 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700 z-0"></div>
+                            {currentDay.items.map((item, idx) => (
+                                <div key={idx} className="relative grid grid-cols-[56px_1fr] gap-4 mb-8 group">
+                                    <div className="flex flex-col items-center z-10">
+                                        <div className="w-14 h-14 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center border-4 border-background-light dark:border-background-dark shadow-sm">
+                                            <span className="material-symbols-outlined text-primary text-[24px]">{item.icon}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col pt-1">
+                                        <div className="bg-white dark:bg-[#2f221a] p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-none hover:shadow-md transition-shadow">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h4 className="text-gray-900 dark:text-white font-bold text-base">{item.title}</h4>
+                                                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">${item.price}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{item.time}</span>
+                                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">{item.category}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4 mb-8">
+                             <button onClick={() => navigate('/map')} className="w-full h-12 rounded-full border-2 border-primary text-primary font-bold hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
+                                <span className="material-symbols-outlined">map</span>
+                                View on Map
+                             </button>
+                        </div>
+                    </div>
+                    <FloatingAIButton />
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const MapViewPage = () => {
+            const navigate = useNavigate();
+            const [view, setView] = useState('Map');
+
+            return (
+                <div className="relative h-screen w-full flex flex-col select-none overflow-hidden max-w-md mx-auto shadow-2xl">
+                    <div className="absolute inset-0 z-0 bg-[#e5e5e5] dark:bg-[#2a2a2a]">
+                        <div className="w-full h-full bg-cover bg-center opacity-100" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB8EBTXb2i2XUNXPoDO_HFvmJhQkGU9kwVKBaDpYrmrqRdiQyqUvO1XtY8AoeDKEqC5xb8rO8qCJlQGrZqKwKpkCn_8XBwx5GBTDwLa9anU3-LmhHil7HuhwDAykqBmHmGillLOuE8H04Z0j_j5gt6KHu901QgpgZ_2GMSlA58MBhZ4wOghblQKo2wQvaF0h9lkTh-ldkJQrVuJhwLd3KhjFoB9dHqYFSKVxKAsNpwuygLPYAxNblDJPgSO7CwLXa7mMKFMoIQrnv8")'}}></div>
+                        {/* Map Pins */}
+                        <div className="absolute top-[45%] left-[20%] flex flex-col items-center gap-1 group cursor-pointer transition-transform hover:scale-110">
+                            <div className="relative flex items-center justify-center size-12 bg-white dark:bg-[#111818] rounded-full shadow-md border-2 border-primary">
+                                <span className="material-symbols-outlined text-primary text-[24px]">temple_hindu</span>
+                            </div>
+                        </div>
+                        <div className="absolute top-[30%] right-[35%] flex flex-col items-center gap-1 group cursor-pointer transition-transform scale-110 z-20">
+                            <div className="relative flex items-center justify-center size-12 bg-primary rounded-full shadow-[0_4px_12px_rgba(19,236,236,0.4)] border-2 border-white dark:border-[#111818]">
+                                <span className="material-symbols-outlined text-[#111818] text-[24px]">pets</span>
+                            </div>
+                            <div className="px-2 py-1 bg-white/90 dark:bg-black/80 rounded-full shadow-sm">
+                                <span className="text-xs font-bold whitespace-nowrap">Monkey Forest</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="absolute top-0 left-0 right-0 z-30 flex flex-col">
+                        <div className="h-12 w-full"></div>
+                        <div className="px-4 pb-2 flex items-center justify-between">
+                            <button onClick={() => navigate(-1)} className="glass-panel size-12 flex items-center justify-center rounded-full shadow-sm active:scale-95 transition-transform">
+                                <span className="material-symbols-outlined text-[#111818] dark:text-white" style={{fontSize: '24px'}}>arrow_back_ios_new</span>
+                            </button>
+                            <div className="glass-panel p-1 rounded-full flex h-12 shadow-sm">
+                                <button onClick={() => setView('List')} className={`px-6 rounded-full transition-all text-sm font-bold ${view === 'List' ? 'bg-primary text-[#111818]' : 'text-[#618989] dark:text-gray-400'}`}>List</button>
+                                <button onClick={() => setView('Map')} className={`px-6 rounded-full transition-all text-sm font-bold ${view === 'Map' ? 'bg-primary text-[#111818]' : 'text-[#618989] dark:text-gray-400'}`}>Map</button>
+                            </div>
+                            <button className="glass-panel size-12 flex items-center justify-center rounded-full shadow-sm active:scale-95 transition-transform">
+                                <span className="material-symbols-outlined text-[#111818] dark:text-white" style={{fontSize: '24px'}}>tune</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-28 left-0 right-0 z-30 flex flex-col">
+                        <div className="w-full overflow-x-auto no-scrollbar snap-x snap-mandatory px-5 pb-2 pt-4">
+                            <div className="flex gap-4 w-max">
+                                <div className="snap-center shrink-0 w-[85vw] max-w-[340px] glass-panel p-3 rounded-[2rem] shadow-xl flex flex-col gap-3">
+                                    <div className="relative w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-gray-100">
+                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                                            <span className="material-symbols-outlined text-primary text-[16px]">schedule</span>
+                                            <span className="text-xs font-bold text-[#111818]">10:00 AM</span>
+                                        </div>
+                                        <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBoEAX0y7xuIlVojkZ58xTMmBoF8sWGWnGyEdft5DhF-TgerjtPFeG5LBW6-COHj5OKoonvRL8SwC1EoAG-GGIexOHdb_6YX8TK2seX8E3VlfMtVr9J9nhE3Uq_-GGCl9bnf-Qno18UH87OtOnESiUXg6VgaVIwdf0ex8lRenQWqeHsJcVFKRv8JYoufWbkF4xYptOgpBG--JYA3CbnW84XDppSjcLLjeOrsCk25XrTSATPtLLoZIu1wdPXLj9-QilGItMW5I62CPM")'}}></div>
+                                    </div>
+                                    <div className="px-2 pb-2">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <div>
+                                                <h3 className="text-xl font-extrabold text-[#111818] dark:text-white leading-tight">Uluwatu Temple</h3>
+                                                <p className="text-[#618989] dark:text-gray-300 text-sm font-medium">Cultural Site • 2 hrs</p>
+                                            </div>
+                                            <span className="text-lg font-bold text-[#111818] dark:text-white">$3</span>
+                                        </div>
+                                        <div className="mt-3 flex gap-2">
+                                            <button className="flex-1 bg-primary h-12 rounded-full flex items-center justify-center gap-2 font-bold text-[#111818] hover:opacity-90 active:scale-95 transition-all">
+                                                <span className="material-symbols-outlined">navigation</span> Navigate
+                                            </button>
+                                            <button className="size-12 rounded-full bg-[#f0f4f4] dark:bg-white/10 flex items-center justify-center text-[#111818] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 active:scale-95 transition-all">
+                                                <span className="material-symbols-outlined">favorite</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="snap-center shrink-0 w-[85vw] max-w-[340px] glass-panel p-3 rounded-[2rem] shadow-xl flex flex-col gap-3 ring-4 ring-primary ring-opacity-50">
+                                    <div className="relative w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-gray-100">
+                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full flex items-center gap-1 z-10 shadow-sm">
+                                            <span className="material-symbols-outlined text-primary text-[16px]">schedule</span>
+                                            <span className="text-xs font-bold text-[#111818]">02:00 PM</span>
+                                        </div>
+                                        <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBtnohl8rIbCItQdqlqmrMPABjP_WDQcDa4SPDlr-uk5HzFQehI2bdlA5h3DzfCaUM3Qdy1gA_VNH5DhR3BLBPlDTWgxHOXyq-0IVJSQmZaft2XaiCOayHuN_b4U7DRaY_FCiS3d8hYhXfveLDAoxfP9z5AomY0DLorQe9WsRuI_O8T6pktUtX0AtWaTtzxYD5h9zqePMQ26VI-pL95s0mPGUtmbIXfSWQdhZBwISe0T2Um6YnM4nME7lN9BMWwD8kw2kfq7FHkDMo")'}}></div>
+                                    </div>
+                                    <div className="px-2 pb-2">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <div>
+                                                <h3 className="text-xl font-extrabold text-[#111818] dark:text-white leading-tight">Monkey Forest</h3>
+                                                <p className="text-[#618989] dark:text-gray-300 text-sm font-medium">Nature Reserve • 1.5 hrs</p>
+                                            </div>
+                                            <span className="text-lg font-bold text-[#111818] dark:text-white">$5</span>
+                                        </div>
+                                        <div className="mt-3 flex gap-2">
+                                            <button className="flex-1 bg-primary h-12 rounded-full flex items-center justify-center gap-2 font-bold text-[#111818] hover:opacity-90 active:scale-95 transition-all">
+                                                <span className="material-symbols-outlined">navigation</span> Navigate
+                                            </button>
+                                            <button className="size-12 rounded-full bg-[#f0f4f4] dark:bg-white/10 flex items-center justify-center text-[#111818] dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 active:scale-95 transition-all">
+                                                <span className="material-symbols-outlined">favorite</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <BottomNav />
+                </div>
+            );
+        };
+
+        const App = () => {
+            return (
+                <MemoryRouter initialEntries={['/']}>
+                    <Routes>
+                        <Route path="/" element={<WelcomePage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/itinerary/:dayId" element={<ItineraryDetailPage />} />
+                        <Route path="/map" element={<MapViewPage />} />
+                    </Routes>
+                </MemoryRouter>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
